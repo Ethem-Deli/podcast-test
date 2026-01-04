@@ -1,42 +1,55 @@
 import yaml
-import xml.etree.ElementTree as xml_tree
+import xml.etree.ElementTree as ET
 
-with open('feed.yaml', 'r') as file:
+ITUNES_NS = "http://www.itunes.com/dtds/podcast-1.0.dtd"
+CONTENT_NS = "http://purl.org/rss/1.0/modules/content/"
+
+ET.register_namespace("itunes", ITUNES_NS)
+ET.register_namespace("content", CONTENT_NS)
+
+with open("feed.yaml", "r", encoding="utf-8") as file:
     yaml_data = yaml.safe_load(file)
 
-    rss_element = xml_tree.Element('rss', {'version': '2.0',
-        'xmlns:itunes': 'http://www.itunes.com/dtds/podcast-1.0.dtd',
-        'xmlns:content': 'http://purl.org/rss/1.0/modules/content/'})
-    
-channel_element = xml_tree.SubElement(rss_element, 'channel')
+rss = ET.Element("rss", version="2.0")
+channel = ET.SubElement(rss, "channel")
 
-link_prefix = yaml_data['link']
+link_prefix = yaml_data["link"]
 
-xml_tree.SubElement(channel_element, 'title').text = yaml_data['title']
-xml_tree.SubElement(channel_element, 'format').text = yaml_data['format']
-xml_tree.SubElement(channel_element, 'subtitle').text = yaml_data['subtitle']
-xml_tree.SubElement(channel_element, 'itunes:author').text = yaml_data['author']
-xml_tree.SubElement(channel_element, 'description').text = yaml_data['description']
-xml_tree.SubElement(channel_element, 'itunes:image',{'href':link_prefix + yaml_data['image']})
-xml_tree.SubElement(channel_element, 'language').text = yaml_data['language']
-xml_tree.SubElement(channel_element, 'link').text = link_prefix
+ET.SubElement(channel, "title").text = yaml_data["title"]
+ET.SubElement(channel, "subtitle").text = yaml_data["subtitle"]
+ET.SubElement(channel, f"{{{ITUNES_NS}}}author").text = yaml_data["author"]
+ET.SubElement(channel, "description").text = yaml_data["description"]
+ET.SubElement(channel, "language").text = yaml_data["language"]
+ET.SubElement(channel, "link").text = link_prefix
 
-xml_tree.SubElement(channel_element, 'itunes:category', {'text':yaml_data['category']})
+ET.SubElement(
+    channel,
+    f"{{{ITUNES_NS}}}image",
+    href=link_prefix + yaml_data["image"]
+)
 
-for item in yaml_data['item']:
-    item_element =xml_tree.SubElement(channel_element, 'item')
-    xml_tree.SubElement(item_element, 'title').text = item['title']
-    xml_tree.SubElement(item_element, 'itunes:author').text = yaml_data['author']
-    xml_tree.SubElement(item_element, 'description').text = item['description']
-    xml_tree.SubElement(item_element, 'itunes:duration').text = item['duration']
-    xml_tree.SubElement(item_element, 'pubDate').text = item['published']
-    xml_tree.SubElement(item_element, 'title').text = item['title']
+ET.SubElement(
+    channel,
+    f"{{{ITUNES_NS}}}category",
+    text=yaml_data["category"]
+)
 
-    enclosure = xml_tree.SubElement(item_element, 'enclosure', {
-        'url': link_prefix + item['file'],
-        'type': 'audio/mpeg',
-        'length': item['length'],
-        })
-    
-output_tree = xml_tree.ElementTree(rss_element)
-output_tree.write('podcast.xml', encoding='UTF-8', xml_declaration=True)
+for item in yaml_data["item"]:
+    item_el = ET.SubElement(channel, "item")
+
+    ET.SubElement(item_el, "title").text = item["title"]
+    ET.SubElement(item_el, f"{{{ITUNES_NS}}}author").text = yaml_data["author"]
+    ET.SubElement(item_el, "description").text = item["description"]
+    ET.SubElement(item_el, f"{{{ITUNES_NS}}}duration").text = item["duration"]
+    ET.SubElement(item_el, "pubDate").text = item["published"]
+
+    ET.SubElement(
+        item_el,
+        "enclosure",
+        url=link_prefix + item["file"],
+        length=str(item["length"]),
+        type="audio/mpeg",
+    )
+
+tree = ET.ElementTree(rss)
+tree.write("podcast.xml", encoding="utf-8", xml_declaration=True)
